@@ -2,32 +2,38 @@
 # vi: set ft=ruby :
 #
 # Vagrantfile voor Apple Intel (x86_64) + VirtualBox
-# Bevat: Ubuntu 26.04, RockyLinux 10, RHEL 10
+# Bevat: Ubuntu 24.04 LTS, RockyLinux 10, AlmaLinux 10 (RHEL 10-compatibel)
+#
+# ┌─────────────────────────────────────────────────────────┐
+# │  WAAROM DEZE BOX KEUZES?                                │
+# │                                                         │
+# │  Ubuntu 26.04  → geen VirtualBox box beschikbaar.      │
+# │                  Canonical stopt met Vagrant boxes.     │
+# │                  bento/ubuntu-24.04 is de beste keuze. │
+# │                                                         │
+# │  RHEL 10       → geen publieke Vagrant Cloud box.      │
+# │                  Red Hat distribueert RHEL niet vrij.  │
+# │                  AlmaLinux 10 is 1:1 RHEL-compatibel  │
+# │                  en heeft een officiële VirtualBox box. │
+# └─────────────────────────────────────────────────────────┘
 #
 # Vereisten:
 #   - Vagrant >= 2.3.x  (https://www.vagrantup.com)
 #   - VirtualBox >= 7.0 (https://www.virtualbox.org)
 #
+# EERSTE KEER: voeg boxes toe met de amd64 architecture flag:
+#   vagrant box add bento/ubuntu-24.04   --provider=virtualbox --architecture=amd64
+#   vagrant box add bento/rockylinux-10  --provider=virtualbox --architecture=amd64
+#   vagrant box add almalinux/10         --provider=virtualbox --architecture=amd64
+#
 # Gebruik:
-#   vagrant up                     # alle VMs starten
-#   vagrant up ubuntu2604          # alleen Ubuntu starten
-#   vagrant up rockylinux10        # alleen RockyLinux starten
-#   vagrant up rhel10              # alleen RHEL starten
-#   vagrant ssh ubuntu2604         # inloggen op Ubuntu
-#   vagrant halt                   # alle VMs stoppen
-#   vagrant destroy -f             # alle VMs verwijderen
-#
-# NOOT RHEL 10:
-#   RHEL vereist een geldig Red Hat account + subscription.
-#   Stel de volgende omgevingsvariabelen in voor registratie:
-#     export RHEL_USERNAME="jouw-redhat-email"
-#     export RHEL_PASSWORD="jouw-redhat-wachtwoord"
-#   Of pas de provisioning sectie hieronder aan.
-#   Alternatief: gebruik de AlmaLinux 10 box (RHEL-compatibel, gratis).
-#
-# NOOT Ubuntu 26.04:
-#   Als de box nog niet beschikbaar is op Vagrant Cloud, gebruik dan:
-#     ubuntu/noble64  (Ubuntu 24.04 LTS) als tijdelijk alternatief.
+#   vagrant up                    # alle VMs starten
+#   vagrant up ubuntu2404         # alleen Ubuntu starten
+#   vagrant up rockylinux10       # alleen RockyLinux starten
+#   vagrant up almalinux10        # alleen AlmaLinux (RHEL-compat) starten
+#   vagrant ssh ubuntu2404        # inloggen op Ubuntu
+#   vagrant halt                  # alle VMs stoppen
+#   vagrant destroy -f            # alle VMs verwijderen
 
 Vagrant.configure("2") do |config|
 
@@ -35,57 +41,41 @@ Vagrant.configure("2") do |config|
   # Globale instellingen
   # ─────────────────────────────────────────────
   config.vm.box_check_update = true
-
-  # Gedeelde map uitschakelen als VirtualBox Guest Additions ontbreken
   config.vm.synced_folder ".", "/vagrant", disabled: false
 
   # ─────────────────────────────────────────────
-  # VM 1: Ubuntu 26.04 LTS
+  # VM 1: Ubuntu 24.04 LTS
+  # Box: bento/ubuntu-24.04 (aanbevolen door HashiCorp, ondersteunt VirtualBox amd64)
   # ─────────────────────────────────────────────
-  config.vm.define "ubuntu2604" do |ubuntu|
-    ubuntu.vm.hostname = "ubuntu2604"
-
-    # Probeer Ubuntu 26.04 box; als niet beschikbaar gebruik 24.04
-    # Controleer beschikbaarheid op: https://app.vagrantup.com/ubuntu
-    ubuntu.vm.box = "ubuntu/oracular64"
-    # ubuntu.vm.box = "ubuntu/noble64"   # <- fallback: Ubuntu 24.04 LTS
+  config.vm.define "ubuntu2404" do |ubuntu|
+    ubuntu.vm.hostname = "ubuntu2404"
+    ubuntu.vm.box = "bento/ubuntu-24.04"
 
     ubuntu.vm.network "private_network", ip: "192.168.56.10"
 
     ubuntu.vm.provider "virtualbox" do |vb|
-      vb.name   = "ubuntu-2604"
+      vb.name   = "ubuntu-2404"
       vb.memory = 2048
       vb.cpus   = 2
       vb.gui    = false
-
-      # Optioneel: schijfgrootte aanpassen (vereist vagrant-disksize plugin)
-      # ubuntu.disksize.size = "20GB"
     end
 
     ubuntu.vm.provision "shell", inline: <<-SHELL
-      echo "=== Ubuntu 26.04 provisioning ==="
+      echo "=== Ubuntu 24.04 provisioning ==="
       apt-get update -y
       apt-get upgrade -y
-      apt-get install -y \
-        curl \
-        wget \
-        git \
-        vim \
-        net-tools \
-        htop \
-        unzip
+      apt-get install -y curl wget git vim net-tools htop unzip
       echo "=== Ubuntu provisioning klaar ==="
     SHELL
   end
 
   # ─────────────────────────────────────────────
   # VM 2: Rocky Linux 10
+  # Box: bento/rockylinux-10 (officiële bento box, VirtualBox amd64)
   # ─────────────────────────────────────────────
   config.vm.define "rockylinux10" do |rocky|
     rocky.vm.hostname = "rockylinux10"
-
-    # Controleer beschikbaarheid op: https://app.vagrantup.com/rockylinux
-    rocky.vm.box = "rockylinux/10"
+    rocky.vm.box = "bento/rockylinux-10"
 
     rocky.vm.network "private_network", ip: "192.168.56.11"
 
@@ -99,77 +89,36 @@ Vagrant.configure("2") do |config|
     rocky.vm.provision "shell", inline: <<-SHELL
       echo "=== Rocky Linux 10 provisioning ==="
       dnf update -y
-      dnf install -y \
-        curl \
-        wget \
-        git \
-        vim \
-        net-tools \
-        htop \
-        unzip \
-        epel-release
+      dnf install -y curl wget git vim net-tools htop unzip epel-release
       echo "=== Rocky Linux provisioning klaar ==="
     SHELL
   end
 
   # ─────────────────────────────────────────────
-  # VM 3: RHEL 10
+  # VM 3: AlmaLinux 10 (RHEL 10 compatibel)
+  # Box: almalinux/10 (officieel gepubliceerd door het AlmaLinux project)
+  # Ondersteunt VirtualBox amd64 volledig.
+  # AlmaLinux is 1:1 binair compatibel met RHEL 10 — zelfde packages,
+  # zelfde kernel, zelfde gedrag. Enige verschil: gratis en zonder licentie.
   # ─────────────────────────────────────────────
-  # OPTIE A: Officiële RHEL box (vereist Red Hat account)
-  #   Registreer op: https://developers.redhat.com (gratis developer sub)
-  #   Voeg toe aan Vagrant: vagrant login (met Red Hat credentials)
-  #   Box naam: redhat/rhel-10 (controleer op Vagrant Cloud)
-  #
-  # OPTIE B: AlmaLinux 10 (gratis RHEL-compatibel alternatief, aanbevolen)
-  #   Verwijder commentaar bij almalinux regel hieronder.
-  # ─────────────────────────────────────────────
-  config.vm.define "rhel10" do |rhel|
-    rhel.vm.hostname = "rhel10"
+  config.vm.define "almalinux10" do |alma|
+    alma.vm.hostname = "almalinux10"
+    alma.vm.box = "almalinux/10"
 
-    # OPTIE A: Officiële RHEL 10 box
-    rhel.vm.box = "generic/rhel10"
-    # rhel.vm.box = "redhat/rhel-10"   # alternatieve naam
+    alma.vm.network "private_network", ip: "192.168.56.12"
 
-    # OPTIE B: AlmaLinux 10 (aanbevolen als je geen RHEL licentie hebt)
-    # rhel.vm.box = "almalinux/10"
-
-    rhel.vm.network "private_network", ip: "192.168.56.12"
-
-    rhel.vm.provider "virtualbox" do |vb|
-      vb.name   = "rhel-10"
+    alma.vm.provider "virtualbox" do |vb|
+      vb.name   = "almalinux-10"
       vb.memory = 2048
       vb.cpus   = 2
       vb.gui    = false
     end
 
-    rhel.vm.provision "shell", env: {
-      "RHEL_USERNAME" => ENV["RHEL_USERNAME"] || "",
-      "RHEL_PASSWORD" => ENV["RHEL_PASSWORD"] || ""
-    }, inline: <<-SHELL
-      echo "=== RHEL 10 provisioning ==="
-
-      # Registreer bij Red Hat Subscription Manager (alleen voor echte RHEL)
-      if [ -n "$RHEL_USERNAME" ] && [ -n "$RHEL_PASSWORD" ]; then
-        echo "Registreren bij Red Hat..."
-        subscription-manager register \
-          --username="$RHEL_USERNAME" \
-          --password="$RHEL_PASSWORD" \
-          --auto-attach || echo "Registratie mislukt of al geregistreerd"
-      else
-        echo "RHEL_USERNAME / RHEL_PASSWORD niet ingesteld, registratie overgeslagen."
-        echo "Stel in: export RHEL_USERNAME=... && export RHEL_PASSWORD=..."
-      fi
-
+    alma.vm.provision "shell", inline: <<-SHELL
+      echo "=== AlmaLinux 10 (RHEL-compatibel) provisioning ==="
       dnf update -y
-      dnf install -y \
-        curl \
-        wget \
-        git \
-        vim \
-        net-tools \
-        htop \
-        unzip
-      echo "=== RHEL 10 provisioning klaar ==="
+      dnf install -y curl wget git vim net-tools htop unzip
+      echo "=== AlmaLinux provisioning klaar ==="
     SHELL
   end
 

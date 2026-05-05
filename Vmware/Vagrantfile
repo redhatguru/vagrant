@@ -1,0 +1,127 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+# Vagrantfile voor Apple Intel (x86_64) + VMware Fusion
+# Bevat: Ubuntu 24.04 LTS, RockyLinux 10, AlmaLinux 10 (RHEL 10-compatibel)
+#
+# ┌──────────────────────────────────────────────────────────────┐
+# │  EENMALIGE INSTALLATIE (doe dit vóór vagrant up)             │
+# │                                                              │
+# │  1. VMware Fusion Pro (gratis persoonlijk gebruik):          │
+# │     https://www.broadcom.com/products/software/vmware-fusion │
+# │     → registreer Broadcom account → download Fusion Pro      │
+# │                                                              │
+# │  2. Vagrant VMware Utility:                                  │
+# │     https://developer.hashicorp.com/vagrant/install/vmware   │
+# │     → download & installeer het .pkg bestand                 │
+# │                                                              │
+# │  3. Vagrant VMware plugin:                                   │
+# │     vagrant plugin install vagrant-vmware-desktop            │
+# │                                                              │
+# │  4. Boxes toevoegen:                                         │
+# │     vagrant box add bento/ubuntu-24.04 --provider=vmware_desktop --architecture=amd64
+# │     vagrant box add bento/rockylinux-10 --provider=vmware_desktop --architecture=amd64
+# │     vagrant box add almalinux/10 --provider=vmware_desktop --architecture=amd64
+# └──────────────────────────────────────────────────────────────┘
+#
+# Gebruik:
+#   vagrant up --provider=vmware_fusion    # alle VMs starten
+#   vagrant up ubuntu2404                  # alleen Ubuntu
+#   vagrant up rockylinux10                # alleen RockyLinux
+#   vagrant up almalinux10                 # alleen AlmaLinux
+#   vagrant ssh ubuntu2404                 # inloggen op Ubuntu
+#   vagrant halt                           # alle VMs stoppen
+#   vagrant destroy -f                     # alle VMs verwijderen
+#
+# TIP: zet de provider standaard in als omgevingsvariabele zodat je
+#      --provider niet steeds hoeft te typen:
+#      export VAGRANT_DEFAULT_PROVIDER=vmware_fusion
+
+ENV['VAGRANT_DEFAULT_PROVIDER'] = 'vmware_fusion'
+
+Vagrant.configure("2") do |config|
+
+  # ─────────────────────────────────────────────
+  # Globale instellingen
+  # ─────────────────────────────────────────────
+  config.vm.box_check_update = true
+  config.vm.synced_folder ".", "/vagrant", disabled: false
+
+  # ─────────────────────────────────────────────
+  # VM 1: Ubuntu 24.04 LTS
+  # ─────────────────────────────────────────────
+  config.vm.define "ubuntu2404" do |ubuntu|
+    ubuntu.vm.hostname = "ubuntu2404"
+    ubuntu.vm.box = "bento/ubuntu-24.04"
+
+    ubuntu.vm.network "private_network", ip: "192.168.56.10"
+
+    ubuntu.vm.provider "vmware_fusion" do |vf|
+      vf.gui              = false
+      vf.memory           = 2048
+      vf.cpus             = 2
+      vf.allowlist_verified = true
+      # vmxnet3 is vereist voor stabiele netwerking in VMware Fusion
+      vf.vmx["ethernet0.virtualdev"] = "vmxnet3"
+    end
+
+    ubuntu.vm.provision "shell", inline: <<-SHELL
+      echo "=== Ubuntu 24.04 provisioning ==="
+      apt-get update -y
+      apt-get upgrade -y
+      apt-get install -y curl wget git vim net-tools htop unzip
+      echo "=== Ubuntu provisioning klaar ==="
+    SHELL
+  end
+
+  # ─────────────────────────────────────────────
+  # VM 2: Rocky Linux 10
+  # ─────────────────────────────────────────────
+  config.vm.define "rockylinux10" do |rocky|
+    rocky.vm.hostname = "rockylinux10"
+    rocky.vm.box = "bento/rockylinux-10"
+
+    rocky.vm.network "private_network", ip: "192.168.56.11"
+
+    rocky.vm.provider "vmware_fusion" do |vf|
+      vf.gui              = false
+      vf.memory           = 2048
+      vf.cpus             = 2
+      vf.allowlist_verified = true
+      vf.vmx["ethernet0.virtualdev"] = "vmxnet3"
+    end
+
+    rocky.vm.provision "shell", inline: <<-SHELL
+      echo "=== Rocky Linux 10 provisioning ==="
+      dnf update -y
+      dnf install -y curl wget git vim net-tools htop unzip epel-release
+      echo "=== Rocky Linux provisioning klaar ==="
+    SHELL
+  end
+
+  # ─────────────────────────────────────────────
+  # VM 3: AlmaLinux 10 (RHEL 10 compatibel)
+  # ─────────────────────────────────────────────
+  config.vm.define "almalinux10" do |alma|
+    alma.vm.hostname = "almalinux10"
+    alma.vm.box = "almalinux/10"
+
+    alma.vm.network "private_network", ip: "192.168.56.12"
+
+    alma.vm.provider "vmware_fusion" do |vf|
+      vf.gui              = false
+      vf.memory           = 2048
+      vf.cpus             = 2
+      vf.allowlist_verified = true
+      vf.vmx["ethernet0.virtualdev"] = "vmxnet3"
+    end
+
+    alma.vm.provision "shell", inline: <<-SHELL
+      echo "=== AlmaLinux 10 (RHEL-compatibel) provisioning ==="
+      dnf update -y
+      dnf install -y curl wget git vim net-tools htop unzip
+      echo "=== AlmaLinux provisioning klaar ==="
+    SHELL
+  end
+
+end
